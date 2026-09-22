@@ -1,0 +1,24 @@
+{
+  "GET": [
+    "/api/(state|health|logs|video|video-library)",
+    "/api/personas/[A-Za-z0-9_-]+/portrait",
+    "/api/contents/[A-Za-z0-9_-]+/export",
+    "/api/runs/[A-Za-z0-9_-]+/(artifacts|logs)",
+    "/api/runs/[A-Za-z0-9_-]+/stages/[A-Za-z0-9_-]+/[a-z]+(/media/[0-9]+)?",
+    "/api/video/jobs/[A-Za-z0-9_-]+/media",
+    "/api/video-library/imported/[A-Za-z0-9_-]+/[0-9]+/[0-9]+/media",
+    "/media/[a-f0-9]{64}\\.(jpg|jpeg|png|webp|mp4)"
+  ],
+  "POST": [
+    "/api/(personas|briefs|sources|settings|generation-requests)",
+    "/api/personas/[A-Za-z0-9_-]+(/select)?",
+    "/api/briefs/[A-Za-z0-9_-]+(/produce)?",
+    "/api/contents/[A-Za-z0-9_-]+/(edit|approve|reject)",
+    "/api/runs/start",
+    "/api/runs/[A-Za-z0-9_-]+/(pause|resume|stop|deadline)",
+    "/api/video/(connect|reference|guides|jobs)",
+    "/api/video/jobs/[A-Za-z0-9_-]+/resume",
+    "/api/video/guides/[A-Za-z0-9_-]+(/delete)?",
+    "/api/remote/uploads/[a-f0-9-]{36}/([0-9]+|complete)"
+  ]
+}

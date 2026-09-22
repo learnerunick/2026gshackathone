@@ -145,7 +145,7 @@ class ProductionArtifacts(StagePreviews):
                     "events": history, "updated_at": job["updated_at"]}
         return self.add_stage_previews(self._safe_log(document))
 
-    def sync_production_artifacts(self, run_id=None):
+    def sync_production_artifacts(self, run_id=None, blocking=True):
         """Call after commit; atomic replacement makes crash recovery idempotent."""
         if run_id is not None:
             self._artifact_id(run_id, "실행")
@@ -153,7 +153,15 @@ class ProductionArtifacts(StagePreviews):
         base.mkdir(parents=True, exist_ok=True, mode=0o700)
         lock_path = self._artifact_path(".mirror.lock")
         with lock_path.open("a+b") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+            except BlockingIOError:
+                # Mirrors are rebuildable; never queue DB commits, heartbeats,
+                # or browser polling behind another full archive rebuild.
+                self.artifact_sync_pending = True
+                paths = [self._artifact_path(run_id, "manifest.json")] if run_id else sorted(base.glob("*/manifest.json"))
+                return [dict(json.loads(path.read_text()), sync_pending=True) for path in paths if path.is_file()]
+            self.artifact_sync_pending = False
             snapshots = self._artifact_snapshot(run_id)
             manifests = []
             for snapshot in snapshots:
@@ -192,8 +200,10 @@ class ProductionArtifacts(StagePreviews):
             return manifests
 
     def describe_artifacts(self, run_id):
-        manifests = self.sync_production_artifacts(run_id)
+        manifests = self.sync_production_artifacts(run_id, blocking=False)
         if not manifests:
+            if getattr(self, "artifact_sync_pending", False):
+                raise self.problem("제작 기록 파일을 갱신 중입니다. 잠시 후 다시 확인해 주세요.", 503)
             raise self.problem("제작 실행을 찾을 수 없습니다.", 404)
         manifest = manifests[0]
         manifest["synced_at"] = datetime.fromtimestamp(self._artifact_path(run_id, "manifest.json").stat().st_mtime, timezone.utc).isoformat()

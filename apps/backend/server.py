@@ -95,7 +95,7 @@ class Store(VideoLibrary, ProductionMediaStore, VideoStore, StudioStore, Automat
         self.init_automation()
         self.init_studio()
         self.init_video()
-        self.sync_production_artifacts()
+        self.sync_production_artifacts(blocking=False)
 
     @contextlib.contextmanager
     def db(self):
@@ -118,7 +118,7 @@ class Store(VideoLibrary, ProductionMediaStore, VideoStore, StudioStore, Automat
             db.close()
         if committed and changed and hasattr(self, "sync_production_artifacts"):
             try:
-                self.sync_production_artifacts()
+                self.sync_production_artifacts(blocking=False)
                 self.artifact_sync_error = None
             except (OSError, sqlite3.Error) as exc:
                 # SQLite remains the source of truth; the next read/start reconciles files.

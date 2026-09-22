@@ -1,0 +1,8 @@
+# Use your own tunnel UUID, credentials path and hostname.
+# Tunnel only to the authenticated bridge, NEVER directly to port 8765.
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: /Users/YOUR_USER/.cloudflared/YOUR_TUNNEL_UUID.json
+ingress:
+  - hostname: boca-worker.your-domain.example
+    service: http://127.0.0.1:8787
+  - service: http_status:404

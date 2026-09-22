@@ -141,3 +141,12 @@ test('stage activity shows actual progress separately from coordinator heartbeat
   assert.ok(view.indexOf('자료 확인 완료') < view.indexOf('공식 자료 검색'));
   assert.doesNotMatch(c.stageActivityView({ ...data, run_id: 'old-run' }), /제작 총괄 연결 확인/);
 });
+
+test('text-stage recovery backoff is shown without overriding user pause', () => {
+  const c = context(), a = c.state.automation;
+  a.specialists.cycle.retry_after = new Date(Date.now() + 30000).toISOString();
+  assert.match(c.specialistWorkerView().heading, /자동 복구/);
+  assert.match(c.specialistWorkerView().copy, /중단된 단계부터/);
+  a.run.status = 'paused';
+  assert.match(c.specialistWorkerView().heading, /일시정지/);
+});

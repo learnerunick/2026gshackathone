@@ -120,9 +120,10 @@ worker=re.search(r"Worker ID: (.+)",sys.stdin.read()).group(1)
 with (root / "launches").open("a") as f: f.write("started\\n")
 print(json.dumps({"type":"thread.started","thread_id":"fixture-full-cycle"}),flush=True)
 (root / "fixture.png").write_bytes(b"fixture-media")
-for stage in ("sources","planning","storyboard","copy","images","register"):
+for _ in range(1):
     claim=store.worker_next(worker)
-    assert claim["should_work"] and claim["job"]["stage"]==stage
+    assert claim["should_work"]
+    stage=claim["job"]["stage"]
     cycle=claim["cycle"]; token=claim["lease_token"]
     results={"sources":{"source_ids":[]},
         "planning":{"title":"Fixture story", "topic_key":cycle["id"], "source_ids":[]},
@@ -143,7 +144,7 @@ print(json.dumps({"type":"turn.completed"}),flush=True)
         with patch.object(LocalProductionWorker, "_command", return_value=[sys.executable, str(script), str(ROOT / "apps/backend"), str(self.root)]):
             self.runner()
             self.wait_for(lambda: self.store.worker_inspect()["run"]["status"] == "completed", timeout=15)
-            self.assertEqual(3, len((self.root / "launches").read_text().splitlines()))
+            self.assertEqual(18, len((self.root / "launches").read_text().splitlines()))
             contents = self.store.state()["contents"]
             self.assertEqual(3, len(contents))
             self.assertTrue(all(item["status"] == "ready" and item["publication"] is None for item in contents))

@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from production_artifacts import ProductionArtifacts, sanitize
 from source_research import AFFILIATE_DOMAINS, SourceResearchStore, normalize_affiliate
 from specialists import SpecialistsStore
-from local_worker import worker_state
+from local_worker import worker_state, TIMEOUT_MESSAGE, NETWORK_MESSAGE, RESTART_MESSAGE
 
 STAGES = [
     {"key": "sources", "label": "GS 소재 확인"},
@@ -87,6 +87,8 @@ class AutomationStore(SpecialistsStore, SourceResearchStore, ProductionArtifacts
             for name in ["run_id", "cycle_id"]:
                 if name not in columns:
                     db.execute("ALTER TABLE jobs ADD COLUMN " + name + " TEXT")
+            if "retry_after" not in {r["name"] for r in db.execute("PRAGMA table_info(production_cycles)")}:
+                db.execute("ALTER TABLE production_cycles ADD COLUMN retry_after TEXT")
 
     def _time(self, value):
         try:
@@ -481,6 +483,11 @@ class AutomationStore(SpecialistsStore, SourceResearchStore, ProductionArtifacts
             db.execute("UPDATE production_runs SET last_heartbeat_at=? WHERE id=?", (timestamp(), run["id"]))
             if run["status"] != "running":
                 return {"should_work": False, "reason": run["status"], "run": self._run(run)}
+            if (runtime.get("online") and runtime.get("worker_id") == worker_id
+                    and runtime.get("single_stage") is True and runtime.get("stage_event_cursor") is not None
+                    and db.execute("SELECT 1 FROM production_events WHERE run_id=? AND id>? AND event IN ('stage.started','stage.resumed')",
+                                   (run["id"], runtime["stage_event_cursor"])).fetchone()):
+                return {"should_work": False, "reason": "stage_limit", "message": "현재 호출의 한 단계가 배정되었습니다. 완료 후 종료하면 서버가 다음 단계를 실행합니다."}
             # A run owns its persona snapshot. Editing or selecting a library
             # profile must not change inputs halfway through a generation.
             cycle = db.execute("SELECT * FROM production_cycles WHERE run_id=? AND status IN ('pending','running','uncertain','suspended') ORDER BY number LIMIT 1",
@@ -499,6 +506,8 @@ class AutomationStore(SpecialistsStore, SourceResearchStore, ProductionArtifacts
                         "run": self._run(run)}
             if cycle and cycle["status"] == "uncertain":
                 return {"should_work": False, "reason": "uncertain", "cycle": self._cycle(cycle)}
+            if cycle and cycle["retry_after"] and self._time(cycle["retry_after"]) > datetime.now(timezone.utc):
+                return {"should_work": False, "reason": "retry_backoff", "retry_after": cycle["retry_after"]}
             if cycle is None:
                 brief = db.execute("SELECT * FROM briefs WHERE run_id=? AND status='queued' ORDER BY created_at LIMIT 1", (run["id"],)).fetchone()
                 settings = json.loads(run["settings_json"])
@@ -549,7 +558,7 @@ class AutomationStore(SpecialistsStore, SourceResearchStore, ProductionArtifacts
             db.execute("UPDATE jobs SET input_json=? WHERE id=?", (dumps(inputs), job_id))
             token = secrets.token_hex(24)
             expires = (datetime.now(timezone.utc)+timedelta(minutes=15)).isoformat()
-            db.execute("UPDATE production_cycles SET status='running',lease_token=?,lease_owner=?,lease_expires_at=?,updated_at=? WHERE id=?",
+            db.execute("UPDATE production_cycles SET status='running',retry_after=NULL,lease_token=?,lease_owner=?,lease_expires_at=?,updated_at=? WHERE id=?",
                        (token, worker_id, expires, timestamp(), cycle["id"]))
             db.execute("UPDATE jobs SET status='running',attempts=attempts+?,error=NULL,updated_at=? WHERE id=?", (0 if continuing else 1, timestamp(), job_id))
             db.execute("UPDATE production_runs SET current_stage=?,last_heartbeat_at=?,updated_at=? WHERE id=?",
@@ -793,6 +802,62 @@ class AutomationStore(SpecialistsStore, SourceResearchStore, ProductionArtifacts
                 self._resume_resolved_video(db, cycle, resolved_video["id"])
             self._retire_if_terminal(db, cycle["run_id"])
             return self._cycle(db.execute("SELECT * FROM production_cycles WHERE id=?", (cycle_id,)).fetchone())
+
+    def recover_interrupted_text_stage(self, cycle_id, owner, error, abandoned=False):
+        """Internal recovery after verified process exit (supervisor/maintenance).
+
+        This is intentionally not a worker/API command: a model cannot attest
+        its own process termination or discard an uncertain media request.
+        Startup recovery additionally requires an expired local lease and a
+        previously recorded supervisor timeout/connection failure.
+        """
+        if error not in (TIMEOUT_MESSAGE, NETWORK_MESSAGE, RESTART_MESSAGE):
+            return None
+        with self.db() as db:
+            cycle = db.execute("SELECT * FROM production_cycles WHERE id=?", (cycle_id,)).fetchone()
+            run = self._refresh(db, db.execute("SELECT * FROM production_runs ORDER BY created_at DESC LIMIT 1").fetchone())
+            if not cycle or not run or run["id"] != cycle["run_id"] or cycle["lease_owner"] != owner:
+                return None
+            stage = STAGES[cycle["stage_index"]]["key"]
+            if stage not in ("sources", "planning", "storyboard", "copy"):
+                return None
+            job = db.execute("SELECT * FROM jobs WHERE id=?", (cycle_id + ":" + stage,)).fetchone()
+            if not job:
+                return None
+            if abandoned:
+                if (run["status"] != "blocked" or run["pause_reason"] != "외부 작업 결과 확인 필요"
+                        or cycle["status"] != "uncertain" or job["status"] != "uncertain"
+                        or job["error"] != error or not (owner or "").startswith("local-codex-")
+                        or not cycle["lease_expires_at"] or self._time(cycle["lease_expires_at"]) > datetime.now(timezone.utc)):
+                    return None
+            elif run["status"] != "running" or cycle["status"] != "running":
+                return None
+            # Even at a text stage, any evidence of paid work or already
+            # registered content makes unattended re-execution ineligible.
+            if db.execute("SELECT 1 FROM jobs WHERE cycle_id=? AND external_job_id IS NOT NULL", (cycle_id,)).fetchone():
+                return None
+            if db.execute("SELECT 1 FROM contents WHERE id=?", (cycle["content_id"],)).fetchone():
+                return None
+            if any(json.loads(row[0]).get("production", {}).get("cycle_id") == cycle_id
+                   for row in db.execute("SELECT input_json FROM video_jobs")):
+                return None
+            self._specialist_cycle_status(db, cycle_id, "interrupted", error + " 저장된 이전 단계에서 자동 재시도합니다.")
+            db.execute("UPDATE jobs SET status='failed',error=?,updated_at=? WHERE id=?", (error, timestamp(), job["id"]))
+            if abandoned:
+                db.execute("UPDATE production_runs SET status='running',pause_reason=NULL,updated_at=? WHERE id=?", (timestamp(), run["id"]))
+            exhausted = job["attempts"] >= job["max_attempts"]
+            retry_after = None
+            if exhausted:
+                self._cycle_failed(db, run["id"], cycle, stage, "자동 복구 재시도 한도 도달: " + error)
+            else:
+                retry_after = (datetime.now(timezone.utc) + timedelta(seconds=30 * 2 ** max(job["attempts"] - 1, 0))).isoformat()
+                db.execute("UPDATE production_cycles SET status='pending',lease_token=NULL,lease_owner=NULL,lease_expires_at=NULL,retry_after=?,updated_at=? WHERE id=?",
+                           (retry_after, timestamp(), cycle_id))
+            self._event(db, run["id"], cycle_id, stage, "worker.retry_exhausted" if exhausted else "worker.retry_scheduled",
+                        "복구 한도에 도달해 이 콘텐츠를 실패로 보존합니다." if exhausted else "중단된 텍스트 단계만 자동 재시도합니다. 완료된 단계는 유지합니다.",
+                        {"job_id": job["id"], "attempt": job["attempts"], "max_attempts": job["max_attempts"],
+                         "retry_after": retry_after, "reason": error, "abandoned": abandoned}, "warning")
+            return {"recovered": True, "exhausted": exhausted, "retry_after": retry_after}
 
     def worker_repair(self, cycle_id, lease_token, target_stage, issues):
         if target_stage not in ["storyboard", "copy", "images"]:

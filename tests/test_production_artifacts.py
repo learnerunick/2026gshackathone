@@ -1,6 +1,7 @@
 """Committed, recoverable production files; no real data or provider requests."""
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+import fcntl
 import importlib.util
 import json
 from pathlib import Path
@@ -175,6 +176,40 @@ class ProductionArtifactTests(unittest.TestCase):
                 self.assertEqual({"source_ids": []}, saved["result"])
         with ThreadPoolExecutor(max_workers=4) as pool:
             list(pool.map(refresh, range(4)))
+
+    def test_archive_lock_does_not_block_constructor_ping_or_completion(self):
+        claim = self.claim()
+        old = self.store.describe_artifacts(self.run["id"])
+        lock_path = self.root / ".runtime/production/.mirror.lock"
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with lock_path.open("a+b") as lock:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    def write_while_busy():
+                        store = Store(self.root)
+                        store.worker_ping(claim["cycle"]["id"], claim["lease_token"])
+                        store.worker_complete(claim["cycle"]["id"], claim["lease_token"], {"source_ids": []})
+                        return store.describe_artifacts(self.run["id"])
+                    cached = pool.submit(write_while_busy).result(timeout=2)
+                    self.assertTrue(cached["sync_pending"])
+                    self.assertEqual(old["last_event_id"], cached["last_event_id"])
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        fresh = self.store.describe_artifacts(self.run["id"])
+        self.assertGreater(fresh["last_event_id"], cached["last_event_id"])
+        self.assertEqual("completed", self.store.read_stage_result(self.run["id"], claim["cycle"]["id"], "sources")["status"])
+
+    def test_busy_archive_without_cached_manifest_returns_retryable_error(self):
+        (self.run_dir / "manifest.json").unlink()
+        with (self.root / ".runtime/production/.mirror.lock").open("a+b") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                with self.assertRaises(Problem) as caught:
+                    self.store.describe_artifacts(self.run["id"])
+                self.assertEqual(503, caught.exception.status)
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        self.assertEqual(self.run["id"], self.store.describe_artifacts(self.run["id"])["run_id"])
 
     def test_invalid_ids_and_unknown_runs_cannot_read_arbitrary_files(self):
         claim = self.claim()

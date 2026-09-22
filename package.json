@@ -1,0 +1,11 @@
+{
+  "name": "boca-remote-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build": "node scripts/build-vercel.mjs",
+    "dev:remote": "node scripts/remote-dev.mjs",
+    "test:remote": "node --test tests/remote/*.test.mjs"
+  }
+}

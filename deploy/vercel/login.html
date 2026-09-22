@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boca Studio · 로그인</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/remote.css">
+  <script src="/login.js" defer></script>
+</head>
+<body class="remote-login">
+  <main class="remote-login-panel">
+    <a href="/" class="brand"><span class="brand-mark">b.</span><span>boca studio</span></a>
+    <h1>콘텐츠 스튜디오에 연결</h1>
+    <p>팀의 접속 암호를 입력해 주세요.<br>콘텐츠 제작은 연결된 Mac에서 계속됩니다.</p>
+    <form id="remote-login-form">
+      <label>접속 암호<input type="password" name="password" autocomplete="current-password" required autofocus></label>
+      <button type="submit" class="button primary">스튜디오 열기</button>
+      <p id="login-error" role="alert"></p>
+    </form>
+  </main>
+</body>
+</html>
