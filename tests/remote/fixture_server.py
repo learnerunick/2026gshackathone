@@ -28,6 +28,11 @@ def main():
     image.write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='))
     (root / 'large.mp4').write_bytes(b'ISOLATED_RANGE_FIXTURE' + b'x' * 6_000_000)
     store = Store(root)
+    # Reproduce the oversized state seen after a long production run.
+    with store.db() as db:
+        db.execute('INSERT INTO jobs (id,stage,status,input_json,result_json,updated_at) VALUES (?,?,?,?,?,?)',
+                   ('large-history-job', 'copy', 'completed', json.dumps({'previous_results': 'x' * 6_000_000}),
+                    json.dumps({'caption': 'stored original evidence'}), '2026-09-22T00:00:00+00:00'))
     persona = store.persona()
     for cid, media in [('remote-image', 'fixture.png'), ('remote-large', 'large.mp4')]:
         store.ingest({'id': cid, 'title': '원격 검증 ' + cid, 'topic_key': cid, 'persona_id': persona['id'],

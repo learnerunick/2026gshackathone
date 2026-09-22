@@ -61,6 +61,20 @@ test('actual local state survives proxying, and local mutation token is replaced
   assert.equal(state.token, csrf); assert.notEqual(state.token, original.token);
   assert.equal(JSON.stringify(state).includes(original.token), false);
   assert.equal(state.remote.mode, 'local-worker');
+  assert.equal(response.headers.get('content-encoding'), 'gzip');
+  assert.equal(state.jobs.find(job => job.id === 'large-history-job').status, 'completed');
+  assert.equal(state.jobs.find(job => job.id === 'large-history-job').input, undefined);
+  assert.equal(original.jobs.find(job => job.id === 'large-history-job').input.previous_results.length, 6_000_000);
+  assert.ok(JSON.stringify(state).length < JSON.stringify(original).length / 10);
+});
+
+test('uncompressed clients and gzip refusal receive readable state without encoding mismatches', async () => {
+  for (const encoding of ['identity', 'gzip;q=0, br']) {
+    const response = await api('/api/state', 'GET', undefined, randomUUID(), { 'Accept-Encoding': encoding });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-encoding'), null);
+    assert.equal((await response.json()).contents.length, 2);
+  }
 });
 
 test('edit, approval, re-edit and rejection use original version safeguards', async () => {

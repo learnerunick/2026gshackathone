@@ -425,7 +425,7 @@ async function refresh(force = false) {
   if (refreshBusy) return;
   refreshBusy = true;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), globalThis.BOCA_REMOTE ? 30000 : 8000);
   try {
     const response = await fetch("/api/state", { cache: "no-store", signal: controller.signal });
     if (!response.ok) throw Error("서버 연결을 확인해 주세요.");
@@ -890,7 +890,7 @@ async function loadVideoLibrary() {
   if (videoLibrary.busy) return;
   videoLibrary.busy = true;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), globalThis.BOCA_REMOTE ? 30000 : 10000);
   try {
     const response = await fetch("/api/video-library", {
       cache: "no-store",
@@ -1466,7 +1466,7 @@ async function loadAutoEvidence() {
   if (autoEvidenceBusy) return;
   autoEvidenceBusy = true;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), globalThis.BOCA_REMOTE ? 30000 : 8000);
   try {
     const requests = [fetch("/api/video", { cache: "no-store", signal: controller.signal })];
     if (run)
@@ -1783,7 +1783,7 @@ async function refreshStageDialog(session) {
   session.busy = true;
   const controller = new AbortController();
   session.controller = controller;
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), globalThis.BOCA_REMOTE ? 30000 : 8000);
   try {
     const response = await fetch(session.url, { cache: "no-store", signal: controller.signal });
     const data = await response.json();
@@ -2051,6 +2051,7 @@ function openDialog(title, copy, body, footer = "") {
   $("dialog-content").innerHTML =
     `<div class="dialog-header"><div><h2 id="dialog-title">${esc(title)}</h2><p>${esc(copy)}</p></div><button class="icon-button" data-action="close-dialog" aria-label="닫기">${icon("close")}</button></div>${body}${footer}`;
   if (!$("studio-dialog").open) $("studio-dialog").showModal();
+  $("studio-dialog").scrollTop = 0;
   document.body.classList.add("dialog-open-body");
 }
 function closeDialog(force = false) {
@@ -2127,6 +2128,7 @@ function setPersonaStep(next) {
   $("persona-next").hidden = dialogStep === 2;
   $("persona-submit").hidden = dialogStep !== 2;
   $("studio-dialog").scrollTop = 0;
+  $("studio-dialog").querySelector(".dialog-body").scrollTop = 0;
 }
 function briefDialog(id, idea) {
   dialogBrief = (state.studio?.briefs || []).find((b) => b.id === id) || null;
@@ -2720,6 +2722,14 @@ document.addEventListener("change", (event) => {
     logStage = event.target.value;
     render(true);
   }
+});
+$("studio-dialog").addEventListener("focusin", (event) => {
+  const field = event.target;
+  if (!field.matches(".dialog-body input, .dialog-body select, .dialog-body textarea")) return;
+  requestAnimationFrame(() => {
+    if (document.activeElement === field)
+      field.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
 });
 $("studio-dialog").addEventListener("cancel", (event) => {
   event.preventDefault();

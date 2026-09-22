@@ -2,12 +2,29 @@ import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { createGzip } from 'node:zlib';
 
 const routes = JSON.parse(readFileSync(new URL('./routes.json', import.meta.url), 'utf8'));
 const cookieName = 'boca_remote_session';
 const bodyLimit = 2_000_000;
 const signature = (key, value) => createHmac('sha256', key).update(value).digest('hex');
 const equal = (a, b) => timingSafeEqual(createHash('sha256').update(String(a)).digest(), createHash('sha256').update(String(b)).digest());
+
+function acceptsGzip(req) {
+  return String(req.headers['accept-encoding'] || '').toLowerCase().split(',').some(value => {
+    const [name, ...parameters] = value.trim().split(';').map(part => part.trim());
+    return name === 'gzip' && parameters.filter(part => part.startsWith('q=')).every(part => Number(part.slice(2)) > 0);
+  });
+}
+
+async function streamJSON(req, res, source) {
+  res.setHeader('Vary', 'Accept-Encoding');
+  const compressed = acceptsGzip(req);
+  if (compressed) res.setHeader('Content-Encoding', 'gzip');
+  res.flushHeaders();
+  if (compressed) await pipeline(source, createGzip(), res);
+  else await pipeline(source, res);
+}
 
 export function configuration(env = process.env) {
   const local = env.BOCA_ALLOW_LOCAL_DEVELOPMENT === '1' && !env.VERCEL;
@@ -140,8 +157,7 @@ export function createGateway({ env = process.env, fetcher = fetch } = {}) {
         // Chunked JSON and binary responses do not buffer media in a Function.
         res.statusCode = upstream.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.flushHeaders();
-        res.end(JSON.stringify(data));
+        await streamJSON(req, res, Readable.from([JSON.stringify(data)]));
         return;
       }
       res.statusCode = upstream.status;
@@ -150,6 +166,10 @@ export function createGateway({ env = process.env, fetcher = fetch } = {}) {
         if (value) res.setHeader(name, value);
       }
       // Deliberately omit Content-Length: Vercel streams the response, including ZIP/MP4 >4.5 MB.
+      if (upstream.body && upstream.headers.get('content-type')?.includes('application/json')) {
+        await streamJSON(req, res, Readable.fromWeb(upstream.body));
+        return;
+      }
       res.flushHeaders();
       if (upstream.body) await pipeline(Readable.fromWeb(upstream.body), res);
       else res.end();

@@ -1,5 +1,6 @@
 /* Loaded only into the Vercel build. Local dashboard scripts remain unchanged. */
 (() => {
+  window.BOCA_REMOTE = true;
   const originalFetch = window.fetch.bind(window);
   let authenticated = false;
   let statusText = 'Mac 작업자 연결 확인 중';

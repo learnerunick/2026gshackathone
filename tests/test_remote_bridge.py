@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'apps/backend'))
-from remote_bridge import Bridge
+from remote_bridge import Bridge, dashboard_state, accepts_gzip
 
 
 class RemoteBridgeTests(unittest.TestCase):
@@ -22,6 +22,23 @@ class RemoteBridgeTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_dashboard_projection_preserves_content_and_status_without_worker_payloads(self):
+        value = {'contents': [{'id': 'content-1', 'payload': {'caption': 'keep'}}],
+                 'automation': {'run': {'id': 'run-1'}},
+                 'jobs': [{'id': 'job-1', 'status': 'completed', 'stage': 'copy',
+                           'input': {'previous_results': 'x' * 6_000_000}, 'result': {'caption': 'keep in storage'}}]}
+        compact = dashboard_state(value)
+        self.assertEqual(value['contents'], compact['contents'])
+        self.assertEqual(value['automation'], compact['automation'])
+        self.assertEqual([{'id': 'job-1', 'status': 'completed', 'stage': 'copy'}], compact['jobs'])
+        self.assertIn('input', value['jobs'][0])
+        self.assertLess(len(json.dumps(compact)), 1000)
+
+    def test_compression_respects_explicit_client_negotiation(self):
+        self.assertTrue(accepts_gzip('br, gzip;q=0.8'))
+        for value in ['', 'br', 'gzip;q=0', 'gzip;q=0.0', 'gzip;q=bad']:
+            self.assertFalse(accepts_gzip(value))
 
     def test_pending_request_stays_uncertain_across_process_restart(self):
         request_id = str(uuid.uuid4())

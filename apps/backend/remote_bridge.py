@@ -5,6 +5,7 @@ Run cloudflared against this port, never against the unauthenticated local UI.
 This process does not start Codex, resume runs, or open the operational DB.
 """
 import argparse
+import gzip
 import hashlib
 import hmac
 import http.client
@@ -39,6 +40,29 @@ def scrub(value):
     if isinstance(value, list):
         return [scrub(v) for v in value]
     return value
+
+
+def dashboard_state(value):
+    """Keep job status, not the repeated worker inputs/results unused by the UI.
+
+    Full production evidence remains available through the stage/artifact APIs.
+    This projection never changes the local API or stored production records.
+    """
+    return {**value, 'jobs': [
+        {key: item for key, item in job.items() if key not in {'input', 'result'}}
+        for job in value.get('jobs', [])
+    ]}
+
+
+def accepts_gzip(header):
+    for encoding in header.lower().split(','):
+        parts = [part.strip() for part in encoding.split(';')]
+        if parts[0] == 'gzip':
+            try:
+                return all(float(part[2:]) > 0 for part in parts[1:] if part.startswith('q='))
+            except ValueError:
+                return False
+    return False
 
 
 class Bridge:
@@ -159,9 +183,15 @@ def handler(bridge):
             self.response_started = True
 
         def send_json(self, code, value):
-            data = json.dumps(value, ensure_ascii=False).encode()
+            data = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
+            compressed = len(data) >= 1024 and accepts_gzip(self.headers.get('Accept-Encoding', ''))
+            if compressed:
+                data = gzip.compress(data, compresslevel=6)
             self.send_response(code)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Vary', 'Accept-Encoding')
+            if compressed:
+                self.send_header('Content-Encoding', 'gzip')
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -209,7 +239,10 @@ def handler(bridge):
                 connection, response = bridge.connect('GET', self.path, range_header=self.headers.get('Range'))
                 mime = response.getheader('Content-Type', '')
                 if 'application/json' in mime:
-                    return self.send_json(response.status, scrub(json.loads(response.read())))
+                    value = json.loads(response.read())
+                    if parts.path == '/api/state' and response.status == 200:
+                        value = dashboard_state(value)
+                    return self.send_json(response.status, scrub(value))
                 self.send_response(response.status)
                 for key in ['Content-Type', 'Content-Length', 'Content-Disposition', 'Accept-Ranges', 'Content-Range']:
                     value = response.getheader(key)
