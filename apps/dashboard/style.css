@@ -6835,14 +6835,14 @@ label textarea {
   .video-library-more > summary { min-height: 40px; padding-block: 10px; }
 }
 
-/* Form fields scroll within the dialog; actions never cover their contents. */
-#dialog-content:has(> form) {
+/* Dialog content scrolls separately so headers and actions never cover it. */
+#dialog-content {
   display: flex;
   flex-direction: column;
   max-height: calc(var(--dialog-max-height) - 2px);
   overflow: hidden;
 }
-#dialog-content:has(> form) > .dialog-header {
+#dialog-content > .dialog-header {
   position: static;
   flex-shrink: 0;
 }
@@ -6851,13 +6851,19 @@ label textarea {
   flex-direction: column;
   min-height: 0;
 }
+#dialog-content > .dialog-body,
 #dialog-content > form > .dialog-body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-padding-block: 16px;
 }
+#dialog-content > .dialog-footer,
 #dialog-content > form > .dialog-footer {
   position: static;
   flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .result-storyboard > summary { min-height: 40px; padding-block: 10px; }
 }

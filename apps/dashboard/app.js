@@ -1789,7 +1789,9 @@ async function refreshStageDialog(session) {
     const data = await response.json();
     if (!response.ok) throw Error(data.error || "단계 결과를 불러오지 못했습니다.");
     if (stageDialogSession !== session || !$("studio-dialog").open) return;
-    const dialog = $("studio-dialog"), scrollTop = dialog.scrollTop;
+    const dialog = $("studio-dialog");
+    const scrollArea = dialog.querySelector(".dialog-body") || dialog;
+    const scrollTop = scrollArea.scrollTop;
     $("dialog-content").querySelector(".dialog-header p").textContent =
       `${labels[data.status] || data.status || "저장됨"} · 결과 갱신 ${date(data.updated_at)}`;
     patchStageDialogSection($("stage-dialog-live"), `<div class="stage-result-status">${badge(data.status || "pending")}<span>시도 ${data.attempts || 0} / ${data.max_attempts || "—"}</span></div>${data.error ? `<div class="inline-warning">${icon("info")}${esc(data.error)}</div>` : ""}${renderStageSpecialist(data, session.stage)}${stageActivityView(data)}`);
@@ -1803,7 +1805,7 @@ async function refreshStageDialog(session) {
     session.loaded = true;
     $("stage-dialog-sync").textContent = `자동 갱신 중 · 마지막 확인 ${new Date().toLocaleTimeString("ko-KR", { hour12: false })}${playing ? " · 영상 재생 유지 중" : ""}`;
     $("stage-dialog-sync").classList.remove("stage-sync-error");
-    dialog.scrollTop = scrollTop;
+    scrollArea.scrollTop = scrollTop;
   } catch (error) {
     if (stageDialogSession !== session || !$("studio-dialog").open) return;
     $("stage-dialog-sync").textContent = `${error.name === "AbortError" ? "응답 시간이 초과됐습니다." : error.message} ${session.loaded ? "마지막으로 확인한 결과를 표시합니다." : "단계 기록을 아직 불러오지 못했습니다."} 5초 후 다시 확인합니다.`;
@@ -1872,7 +1874,7 @@ function renderFeed() {
       p.instagram_handle ||
       state.studio?.settings?.instagram?.account ||
       state.config.instagram?.account;
-  return `${heading("피드 미리보기", "계정의 분위기, 표지와 주제의 균형을 한눈에 확인하세요.", button("프로필 편집", "edit-persona", "", "edit", `data-id="${esc(persona.id)}"`))}<div class="feed-layout"><section class="instagram-preview"><div class="instagram-top"><span>${esc(handle || "프로필 미리보기")}</span>${icon("more")}</div><div class="instagram-profile"><div class="instagram-profile-head">${avatar(persona)}<div class="instagram-stats"><div><strong>${rows.length}</strong><span>콘텐츠</span></div><div><strong>—</strong><span>팔로워</span></div><div><strong>—</strong><span>팔로잉</span></div></div></div><p class="instagram-bio"><strong>${esc(personaName(persona))}</strong>${esc(personaBio(persona) || array(p.interests).join(" · "))}<br>${esc(p.content?.disclosure || disclosure)}</p><div class="instagram-buttons"><span>프로필 초안</span><span>게시 전 미리보기</span></div></div><div class="instagram-tab">${icon("feed")}</div><div class="instagram-grid">${rows.length ? rows.map(renderFeedCell).join("") : Array.from({ length: 9 }, (_, i) => `<div class="instagram-cell ghost" aria-hidden="true">${i === 4 ? icon("plus") : icon("image")}</div>`).join("")}</div><p class="instagram-caption">${rows.length ? "실제 Instagram 화면과 일부 차이가 있을 수 있습니다. 콘텐츠를 선택하면 검수 화면으로 이동합니다." : "아직 피드가 없습니다. 이야기가 완성되면 이 공간에 실제 표지가 채워집니다."}</p></section><aside class="feed-sidebar"><section class="panel feed-note"><h2>이 계정의 콘텐츠</h2><div class="balance-item"><span>전체 콘텐츠</span><strong>${all.length}건</strong></div><div class="balance-item"><span>검수 대기</span><strong>${all.filter((c) => c.status === "ready").length}건</strong></div><div class="balance-item"><span>승인 완료</span><strong>${all.filter((c) => c.status === "approved").length}건</strong></div><div class="balance-item"><span>게시 완료</span><strong>${all.filter((c) => c.status === "published").length}건</strong></div><label class="feed-filter">미리보기 범위<select id="feed-filter">${options(
+  return `${heading("피드 미리보기", "계정의 분위기, 표지와 주제의 균형을 한눈에 확인하세요.", button("프로필 편집", "edit-persona", "", "edit", `data-id="${esc(persona.id)}"`))}<div class="feed-layout"><section class="instagram-preview"><div class="instagram-top"><span>${esc(handle || "프로필 미리보기")}</span>${icon("more")}</div><div class="instagram-profile"><div class="instagram-profile-head">${avatar(persona)}<div class="instagram-stats"><div><strong>${rows.length}</strong><span>콘텐츠</span></div><div><strong>52만</strong><span>팔로워</span></div><div><strong>25</strong><span>팔로잉</span></div></div></div><p class="instagram-bio"><strong>${esc(personaName(persona))}</strong>${esc(personaBio(persona) || array(p.interests).join(" · "))}<br>${esc(p.content?.disclosure || disclosure)}</p><div class="instagram-buttons"><span>프로필 초안</span><span>게시 전 미리보기</span></div></div><div class="instagram-tab">${icon("feed")}</div><div class="instagram-grid">${rows.length ? rows.map(renderFeedCell).join("") : Array.from({ length: 9 }, (_, i) => `<div class="instagram-cell ghost" aria-hidden="true">${i === 4 ? icon("plus") : icon("image")}</div>`).join("")}</div><p class="instagram-caption">${rows.length ? "실제 Instagram 화면과 일부 차이가 있을 수 있습니다. 콘텐츠를 선택하면 검수 화면으로 이동합니다." : "아직 피드가 없습니다. 이야기가 완성되면 이 공간에 실제 표지가 채워집니다."}</p></section><aside class="feed-sidebar"><section class="panel feed-note"><h2>이 계정의 콘텐츠</h2><div class="balance-item"><span>전체 콘텐츠</span><strong>${all.length}건</strong></div><div class="balance-item"><span>검수 대기</span><strong>${all.filter((c) => c.status === "ready").length}건</strong></div><div class="balance-item"><span>승인 완료</span><strong>${all.filter((c) => c.status === "approved").length}건</strong></div><div class="balance-item"><span>게시 완료</span><strong>${all.filter((c) => c.status === "published").length}건</strong></div><label class="feed-filter">미리보기 범위<select id="feed-filter">${options(
     [
       ["all", "모든 콘텐츠"],
       ["ready", "검수 대기만"],
@@ -1886,7 +1888,7 @@ function renderFeed() {
     .map((i) => `<span class="tag">${esc(i)}</span>`)
     .join(
       "",
-    )}</div><hr class="section-divider"><p>실제 계정은 아직 연결되지 않았습니다. 팔로워·팔로잉 수는 불러오지 않으며, 이 화면은 저장된 페르소나의 프로필 초안입니다.</p><button class="text-button space-top" data-nav="settings">계정 연결 상태 확인 ${icon("arrow")}</button></section></aside></div>`;
+    )}</div><hr class="section-divider"><p>팔로워 52만 명·팔로잉 25명은 미리보기용 예시입니다. 이 화면은 저장된 페르소나의 프로필 초안이며, 실제 계정은 아직 연결되지 않았습니다.</p><button class="text-button space-top" data-nav="settings">계정 연결 상태 확인 ${icon("arrow")}</button></section></aside></div>`;
 }
 function sourceOrigin(source) {
   return source.origin === "web_research" ? "automatic" : "manual";
@@ -2725,7 +2727,7 @@ document.addEventListener("change", (event) => {
 });
 $("studio-dialog").addEventListener("focusin", (event) => {
   const field = event.target;
-  if (!field.matches(".dialog-body input, .dialog-body select, .dialog-body textarea")) return;
+  if (!field.closest(".dialog-body")) return;
   requestAnimationFrame(() => {
     if (document.activeElement === field)
       field.scrollIntoView({ block: "nearest", inline: "nearest" });
