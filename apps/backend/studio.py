@@ -7,6 +7,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from source_research import AFFILIATE_DOMAINS, normalize_affiliate
+from instagram_connection import public_status, verify as verify_instagram, ConnectionError as InstagramConnectionError
 
 DISCLOSURE = "AI로 만든 가상 인물의 창작 일상입니다."
 
@@ -195,7 +196,20 @@ class StudioStore:
                 if key in saved.get("generation", {}):
                     config[key] = saved["generation"][key]
             config["video"].update(saved.get("generation", {}).get("auto_video", {}))
+        config["instagram"].update(public_status(self.root, config["instagram"].get("account")))
         return config
+
+    def verify_instagram_connection(self):
+        account = self.config()["instagram"].get("account")
+        try:
+            result = verify_instagram(self.root, account)
+        except InstagramConnectionError as error:
+            raise self.problem(str(error), 409) from None
+        with self.db() as db:
+            self._event(db, None, None, "settings", "instagram.verified",
+                        "Instagram 계정과 게시 권한을 확인했습니다. 실제 게시는 실행하지 않았습니다.",
+                        {"account": result["account"], "verified_at": result["verified_at"]})
+        return result
 
     def _persona_record(self, db, row):
         profile = self.with_persona_references(self._persona_profile(db, row["id"]), db=db)

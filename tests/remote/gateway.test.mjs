@@ -53,6 +53,17 @@ test('cloud cannot opt into insecure local settings; origin and CSRF are require
   assert.equal((await fetch(base + '/api/state', { headers: { Cookie: cookie + 'tampered' } })).status, 401);
 });
 
+test('Instagram recheck reaches the local verifier through authenticated routing', async () => {
+  assert.equal(allowed('POST', '/api/instagram/verify'), true);
+  assert.equal(allowed('GET', '/api/instagram/verify'), false);
+  assert.equal((await fetch(base + '/api/instagram/verify', { method: 'POST',
+    headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+  // The isolated fixture has no Instagram credentials; this error comes from the core API.
+  const response = await api('/api/instagram/verify', 'POST', {});
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /게시 대상 계정|인증 토큰/);
+});
+
 test('actual local state survives proxying, and local mutation token is replaced', async () => {
   const original = await (await fetch(core + '/api/state')).json();
   const response = await api('/api/gateway?_boca_path=/api/state');

@@ -11,6 +11,7 @@
   ],
   "POST": [
     "/api/(personas|briefs|sources|settings|generation-requests)",
+    "/api/instagram/verify",
     "/api/personas/[A-Za-z0-9_-]+(/select)?",
     "/api/briefs/[A-Za-z0-9_-]+(/produce)?",
     "/api/contents/[A-Za-z0-9_-]+/(edit|approve|reject)",

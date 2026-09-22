@@ -331,6 +331,8 @@ class Store(VideoLibrary, ProductionMediaStore, VideoStore, StudioStore, Automat
         settings = config["instagram"]
         if not account or settings.get("account") != account or settings.get("connection") != "verified":
             raise Problem("게시 계정 연결을 먼저 확인해야 합니다.", 409)
+        if settings.get("publisher_ready") is False:
+            raise Problem("계정 인증은 완료됐지만 실제 게시 작업자와 미디어 전달 연결이 아직 필요합니다.", 409)
         if datetime.now(timezone.utc) < datetime.fromisoformat(config["publish_not_before"]):
             raise Problem("내일 아침 게시 시작 시간 전입니다. 승인 상태로 보관합니다.", 409)
         with self.db() as db:
@@ -469,7 +471,9 @@ def handler(store):
                     state["token"] = store.token
                     return self.send_data(state)
                 if path == "/api/health":
-                    return self.send_data({"status": "ok", "publisher_connected": store.config()["instagram"]["connection"] == "verified"})
+                    instagram = store.config()["instagram"]
+                    return self.send_data({"status": "ok", "instagram_connected": instagram["connection"] == "verified",
+                                           "publisher_connected": instagram["connection"] == "verified" and instagram.get("publisher_ready") is not False})
                 if path == "/api/logs":
                     query = parse_qs(urlparse(self.path).query)
                     return self.send_data({"logs": store.logs(query.get("run_id", [None])[0],
@@ -618,6 +622,8 @@ def handler(store):
                     result = store.produce_brief(brief_id) if production else store.update_brief(brief_id, body)
                 elif path == "/api/settings":
                     result = store.update_settings(body)
+                elif path == "/api/instagram/verify":
+                    result = store.verify_instagram_connection()
                 elif run_match:
                     result = store.update_run_deadline(run_match.group(1), body) if run_match.group(2) == "deadline" else store.control_run(*run_match.groups())
                 elif path == "/api/sources":
