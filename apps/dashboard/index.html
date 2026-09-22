@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f7f8fb" />
+    <title>Boca Studio · 콘텐츠 워크스페이스</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/production-guides.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">본문으로 이동</a>
+    <aside class="sidebar" id="sidebar">
+      <button
+        class="icon-button sidebar-close"
+        id="sidebar-close"
+        type="button"
+        aria-label="메뉴 닫기"
+      ></button>
+      <a class="brand" href="#overview" aria-label="Boca Studio 홈"
+        ><span class="brand-mark">b.</span
+        ><span>boca<span class="brand-studio">studio</span></span></a
+      >
+      <div class="workspace-label">
+        <span class="workspace-avatar">B</span>
+        <div>
+          <strong>라이프스타일 스튜디오</strong><span>랄프톤 워크스페이스</span>
+        </div>
+      </div>
+      <nav class="navigation" aria-label="주요 메뉴" id="navigation"></nav>
+      <div class="sidebar-bottom">
+        <div class="connection-dot">
+          <i></i><span id="server-status">워크스페이스 연결 중</span>
+        </div>
+        <div class="team-profile">
+          <span class="team-avatar">GS</span>
+          <div><strong>랄프톤 팀</strong><span>개발자 워크스페이스</span></div>
+          <span class="team-count">4</span>
+        </div>
+      </div>
+    </aside>
+    <button
+      id="sidebar-backdrop"
+      class="sidebar-backdrop"
+      type="button"
+      aria-label="메뉴 닫기"
+      tabindex="-1"
+      hidden
+    ></button>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <button
+            class="icon-button mobile-menu"
+            id="menu-button"
+            aria-label="메뉴 열기"
+            aria-expanded="false"
+            aria-controls="sidebar"
+          ></button
+          ><span>Boca studio</span><span class="breadcrumb-separator">/</span
+          ><strong id="breadcrumb-current">개요</strong>
+        </div>
+        <button id="production-status-button" class="production-status-button" type="button" data-nav="production" hidden>
+          <span class="production-status-dot" aria-hidden="true"></span>
+          <span id="production-status-label">AI 제작 현황</span>
+          <span id="production-status-stage" class="production-status-stage"></span>
+          <span id="production-status-count" class="production-status-count"></span>
+          <span class="production-status-arrow" aria-hidden="true">›</span>
+        </button>
+        <div class="topbar-actions">
+          <a class="button video-tool-link" href="/video"
+            ><span class="video-tool-long">영상 직접 제작</span
+            ><span class="video-tool-short">영상 도구</span></a
+          ><label class="persona-switch"
+            ><span class="switch-label">작업 페르소나</span
+            ><select
+              id="persona-switch"
+              aria-label="작업 페르소나 선택"
+            ></select></label
+          ><button
+            class="icon-button"
+            id="refresh-button"
+            aria-label="새로고침"
+            title="새로고침"
+          ></button
+          ><span class="top-avatar">GS</span>
+        </div>
+      </header>
+      <main id="workspace" tabindex="-1">
+        <div class="initial-loading">
+          <span class="loading-ring"></span>
+          <p>스튜디오를 불러오고 있어요.</p>
+        </div>
+      </main>
+      <footer class="workspace-footer">
+        <span>가상 인물의 일상을 만드는 콘텐츠 스튜디오</span
+        ><span>최종 게시는 사람의 승인 후에 진행됩니다.</span>
+      </footer>
+    </div>
+    <dialog
+      id="studio-dialog"
+      class="studio-dialog"
+      aria-labelledby="dialog-title"
+    >
+      <div id="dialog-content"></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

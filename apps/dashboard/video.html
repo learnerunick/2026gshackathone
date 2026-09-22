@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>영상 제작 · Boca Studio</title>
+  <link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/video.css">
+  <script src="/video.js" defer></script>
+</head>
+<body class="video-workspace">
+  <header class="video-header"><a href="/" class="video-brand">boca <span>studio</span></a><a class="button" href="/">스튜디오로 돌아가기</a></header>
+  <main class="video-main">
+    <div class="video-intro"><div><p class="eyebrow">SEGMIND · SEEDANCE 2.5</p><h1>일상을 영상으로</h1><p class="muted">스토리보드와 인물 기준 이미지로 30초 안팎의 릴스를 만듭니다.</p></div><span id="video-connection" class="video-badge" role="status">연결 확인 중</span></div>
+    <details id="key-panel" class="video-panel" open>
+      <summary>Segmind API 연결</summary>
+      <form id="key-form" class="video-key-form">
+        <p class="muted">Segmind에서 발급한 API 키를 입력하세요. 키는 이 Mac의 서버에만 저장되며 다시 화면에 표시하지 않습니다.</p>
+        <label for="api-key">API 키<input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Segmind API key"></label>
+        <div class="video-actions"><button class="button primary" id="connect-button" type="submit">저장 · 연결 확인</button><a href="https://platform.segmind.com/" target="_blank" rel="noopener noreferrer">Segmind 열기 ↗</a></div>
+        <p class="field-help">연결 확인은 계정 인증만 조회하며 영상을 생성하지 않습니다.</p>
+      </form>
+    </details>
+    <section class="video-panel"><h2>영상 제작 참고 MD</h2><p class="muted">공통 지침은 콘텐츠 제작의 AI 자동 제작 화면에서 등록·관리합니다. 직접 영상 제작에도 같은 지침을 적용합니다.</p><a class="button" href="/#create">콘텐츠 제작에서 MD 관리</a></section>
+    <div class="video-columns">
+      <section class="video-panel"><h2>새 영상 만들기</h2>
+        <form id="video-form" class="field-stack">
+          <label>페르소나<select id="video-persona" required></select></label>
+          <label>기존 이미지 콘텐츠 활용<select id="video-source"><option value="">페르소나 기준 이미지 사용</option></select></label>
+          <label><span id="reference-upload-label">이 영상의 기준 이미지</span><input type="file" id="video-reference" accept="image/png,image/jpeg,image/webp"></label>
+          <p class="field-help" id="reference-upload-help">PNG·JPEG·WebP, 10MB 이하. 선택한 이미지는 이 영상에만 사용하며 페르소나 원본을 변경하지 않습니다.</p>
+          <img id="reference-preview" class="video-reference-preview" alt="업로드한 영상 기준 이미지" hidden>
+          <label class="video-checkbox"><input type="checkbox" id="video-text-only"> 기준 이미지 없이 시안 생성</label>
+          <p class="field-help" id="text-only-help">텍스트 시안은 기존 페르소나와 같은 얼굴을 유지하지 못할 수 있습니다.</p>
+          <p id="reference-note" class="field-help"></p>
+          <label>영상 제목<input id="video-title" maxlength="200" required placeholder="퇴근 후 발견한 작은 취향"></label>
+          <label>스토리보드<textarea id="video-storyboard" rows="8" maxlength="12000" required placeholder="장면별 시간, 인물의 행동, 장소와 카메라 움직임을 적어 주세요.&#10;예: 0–8초: 현관에 들어와 가방을 내려놓는 모습…"></textarea></label>
+          <label>게시 문안<textarea id="video-caption" rows="4" maxlength="2100" required placeholder="영상과 함께 보여줄 일상 이야기"></textarea></label>
+          <label>보이스 대본 <span class="muted">선택</span><textarea id="video-voice-script" rows="3" maxlength="116" placeholder="짧고 자연스러운 말투로 적어 주세요. 비우면 게시 문안 앞부분을 사용합니다."></textarea></label>
+          <p class="field-help">한국어 보이스와 같은 내용의 자막을 넣습니다. 자막은 큰 흰 글씨·어두운 배경·최대 두 줄로 영상에 직접 입힙니다.</p>
+          <p class="field-help">가상 인물 표시가 문안에 자동으로 포함됩니다. 완성 후 문안을 수정하고 승인할 수 있습니다.</p>
+          <div class="field-row"><label>길이<select id="video-duration"><option value="30">30초</option><option value="25">25초</option><option value="20">20초</option></select></label><label>화질<select id="video-resolution"><option value="720p">720p · 기본</option><option value="480p">480p · 시안</option></select></label></div>
+          <div class="video-cost"><strong id="cost-estimate"></strong><p class="field-help">세로 9:16 · 음성 포함 · 최종 비용은 Segmind의 실제 사용량에 따라 달라집니다.</p><p id="budget-note" class="field-help"></p></div>
+          <p id="guide-applied" class="field-help"></p>
+          <button class="button primary" id="generate-button" type="submit" disabled>영상 생성</button>
+          <p id="generate-blocker" class="field-help" role="status"></p>
+          <p class="field-help">버튼을 누르면 스토리보드, 적용한 MD 지침과 선택한 참조 이미지가 Segmind로 전송되고 구독 크레딧이 사용됩니다. 완성 영상은 검토 대기로 등록됩니다.</p>
+        </form>
+      </section>
+      <section class="video-panel"><div class="video-jobs-heading"><h2>제작 기록</h2><button type="button" class="button" id="video-refresh">새로고침</button></div><p class="field-help">생성 중에도 다른 콘텐츠를 작업할 수 있습니다. 화면을 닫아도 로컬 서버가 켜져 있으면 작업을 계속합니다.</p><div id="video-jobs" aria-live="polite"></div></section>
+    </div>
+    <section id="video-review" class="video-panel" hidden><h2>완성 영상 검토</h2><p id="review-version" class="muted"></p><div class="video-review-columns"><video id="review-player" controls preload="metadata"></video><form id="review-form" class="field-stack"><label>제목<input id="review-title" required maxlength="200"></label><label>게시 문안<textarea id="review-caption" rows="8" required></textarea></label><p id="review-note" class="field-help"></p><div class="video-actions"><button class="button" id="review-save" type="submit">수정 저장</button><button class="button primary" id="review-approve" type="button">현재 버전 승인</button><a id="review-export" class="button">파일 다운로드</a></div><p class="field-help">승인은 이 버전의 영상과 문안에 연결됩니다. Instagram 직접 게시 연결은 별도로 필요합니다.</p></form></div></section>
+  </main><div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

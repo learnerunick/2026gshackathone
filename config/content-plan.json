@@ -1,0 +1,16 @@
+{
+  "status": "draft-story-directions",
+  "note": "주제 초안이며 카드 수·문안·상품은 스토리보드 단계에서 결정한다. 사용자가 수정한 주제를 우선한다.",
+  "posts": [
+    {"id":"boca-01-introduction","order":1,"title":"여의도에서 일하고, 목동에서 나를 찾는 사람","topic_key":"introduce-working-mom","brief":"계획적인 성격과 집 가꾸는 취향이 드러나는 첫 인사. 상품 소개보다 캐릭터와 일상의 첫인상을 만든다.","daughter":false},
+    {"id":"boca-02-morning","order":2,"title":"아침의 여유는 전날 밤에 만들어두기","topic_key":"evening-prep-morning","brief":"출근 준비 공간과 가방 주변을 정돈하는 일상. 지나친 완벽함 대신 하나씩 준비하는 공감. 어울리는 수납 상품은 실제 판매 자료 확인 후 연결한다.","daughter":false},
+    {"id":"boca-03-lunch-walk","order":3,"title":"점심시간에 잠깐, 나를 위한 한 바퀴","topic_key":"yeouido-lunch-walk","brief":"여의도 직장인의 짧은 산책과 작은 취향 발견. 실제 직장·회사·동료·방문 상호를 만들어내지 않는다.","daughter":false},
+    {"id":"boca-04-entryway","order":4,"title":"집에 들어오면 가장 먼저 보이는 곳","topic_key":"entryway-reset","brief":"목동 집 현관의 생활감과 정리 취향. 정리 용품은 성능 후기 대신 배치 아이디어로 연결한다.","daughter":false},
+    {"id":"boca-05-drawing","order":5,"title":"계획표 옆에 붙은 다섯 살의 그림","topic_key":"daughter-drawing","brief":"엄마를 닮은 다섯 살 외동딸과 창작 일상. 딸의 그림과 엄마의 정리 습관이 만나는 다정한 장면. 학교·이름표·주소는 드러내지 않는다.","daughter":true},
+    {"id":"boca-06-light","order":6,"title":"조명이 바뀌면 저녁의 속도도 달라져서","topic_key":"evening-lighting","brief":"퇴근 후 집의 조명과 공간 취향. 실제 상품 판매 여부를 확인하고 인테리어 제안으로 소개한다. 구매·사용 만족도는 지어내지 않는다.","daughter":false},
+    {"id":"boca-07-table","order":7,"title":"크게 차리지 않아도, 식탁은 내 취향으로","topic_key":"simple-table-styling","brief":"작은 식탁 스타일링과 실용적인 생활 감각. 식기나 패브릭은 실제 출처에 근거한 취향 후보로 연결한다.","daughter":false},
+    {"id":"boca-08-little-corner","order":8,"title":"내 취향 한 칸, 딸의 취향 한 칸","topic_key":"shared-home-corner","brief":"엄마와 다섯 살 딸의 취향이 함께 있는 집 한편. 딸이 등장하는 두 번째 이야기이며 그 외 게시물에서는 과도하게 반복하지 않는다.","daughter":true},
+    {"id":"boca-09-fabric","order":9,"title":"큰 가구 대신 작은 색을 바꾸는 날","topic_key":"fabric-color-mood","brief":"집을 가꾸는 취향을 패브릭 색과 질감으로 보여준다. 실제로 바꾸어 써봤다는 상품 후기는 쓰지 않는다.","daughter":false},
+    {"id":"boca-10-personal-time","order":10,"title":"오늘의 할 일을 접고, 내 시간을 펴기","topic_key":"quiet-personal-time","brief":"워킹맘의 조용한 개인 시간과 다음 이야기에 대한 여운. 특정 가족 구성원이나 직업 정보를 새로 확정하지 않는다.","daughter":false}
+  ]
+}

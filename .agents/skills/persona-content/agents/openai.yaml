@@ -1,0 +1,4 @@
+interface:
+  display_name: "Persona Content"
+  short_description: "실사형 페르소나의 일상 스토리와 카드형 콘텐츠를 기획·검수"
+  default_prompt: "Use $persona-content to draft or review this project's virtual influencer content using its agreed persona and source material."

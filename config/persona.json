@@ -1,0 +1,57 @@
+{
+  "id": "yeouido-mokdong-mom",
+  "version": 1,
+  "status": "user-defined-profile-visual-draft-pending",
+  "display_name": null,
+  "nationality": "한국인",
+  "gender": "여성",
+  "age_description": "30대 후반",
+  "work": {
+    "location": "서울 여의도",
+    "role": "워킹맘",
+    "employer": null
+  },
+  "home": {
+    "neighborhood": "서울 목동",
+    "exact_address": null
+  },
+  "family": {
+    "only_child": true,
+    "daughter": {
+      "age": 5,
+      "resembles_mother": true,
+      "appearance_frequency": "가끔",
+      "visual_reference": null
+    }
+  },
+  "personality": [
+    "TJ처럼 계획적이고 실용적",
+    "간결하고 분명한 말투",
+    "일상 속 공감과 다정함"
+  ],
+  "interests": [
+    "집 가꾸기",
+    "일상 공유",
+    "취향 발견"
+  ],
+  "visual_reference": null,
+  "visual_reference_status": "not-created",
+  "content": {
+    "format": "variable-length-carousel",
+    "card_count": null,
+    "story_first": true,
+    "product_source": "GS리테일(편의점 GS25, 수퍼 GS THE FRESH)·GSSHOP·GS건설·GS칼텍스·파르나스 호텔의 공개 브랜드·상품·서비스 자료",
+    "public_retailer_mentions": false,
+    "internal_source_tracking": true,
+    "disclosure": "AI로 만든 가상 인물의 창작 일상입니다.",
+    "no_fabricated_purchase_or_usage": true,
+    "no_identifiable_real_person_reference": true,
+    "brand_targets": [
+      "GS리테일",
+      "GS SHOP",
+      "GS건설",
+      "GS칼텍스",
+      "파르나스 호텔"
+    ]
+  }
+}

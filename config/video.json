@@ -1,0 +1,13 @@
+{
+  "model": "seedance-2.5",
+  "duration": 30,
+  "resolution": "720p",
+  "aspect_ratio": "9:16",
+  "max_pending": 2,
+  "daily_estimated_budget_usd": 15,
+  "max_estimated_cost_usd": 8,
+  "poll_interval_seconds": 10,
+  "max_poll_errors": 5,
+  "price_checked_at": "2026-09-21",
+  "price_source": "https://www.segmind.com/models/seedance-2.5/pricing"
+}

@@ -1,0 +1,38 @@
+{
+  "timezone": "Asia/Seoul",
+  "start_at": "2026-09-21T17:30:00+09:00",
+  "generation_end_at": null,
+  "publish_not_before": "2026-09-22T09:00:00+09:00",
+  "followup_end_at": "2026-09-22T12:00:00+09:00",
+  "generation_mode": "continuous",
+  "source_research_enabled": true,
+  "specialist_agents_enabled": true,
+  "ai_quality_review_enabled": false,
+  "media_mode": "mixed",
+  "min_posts_reference": 10,
+  "stop_after_posts": null,
+  "max_pending_requests": 20,
+  "schedule_status": "user-confirmed-no-generation-deadline",
+  "provider": "codex-built-in-image-generation",
+  "paid_api_allowed": false,
+  "max_attempts_per_job": 2,
+  "instagram": {
+    "account": null,
+    "connection": "not-connected",
+    "publish_after_human_approval_only": true
+  },
+  "video": {
+    "mode": "segmind-ai-selected",
+    "automatic_enabled": true,
+    "required": false,
+    "duration": 20,
+    "resolution": "480p"
+  },
+  "brand_targets": [
+    "GS리테일",
+    "GS SHOP",
+    "GS건설",
+    "GS칼텍스",
+    "파르나스 호텔"
+  ]
+}
