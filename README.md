@@ -74,7 +74,7 @@ tail -F .runtime/production/RUN_ID/events.log
 
 ### Vercel에서 현재 AI 제작 방식 사용
 
-Vercel에는 대시보드와 인증 중계 API를 배포하고, AI 제작·SQLite·미디어는 현재 Mac에서 계속 실행하는 구성을 제공한다. 원격 로그인, API 요청 서명, 영상·ZIP 스트리밍, 이미지 분할 업로드를 포함한다. Mac 서버와 HTTPS 터널이 실행 중이어야 한다. [환경변수·실행·Git/Vercel 배포 안내](docs/vercel-local-worker.md)를 따른다.
+Vercel에는 대시보드와 인증 중계 API를 배포하고, AI 제작·SQLite·미디어는 현재 Mac에서 계속 실행하는 구성을 제공한다. 로그인 없는 해커톤 MVP 접근, API 요청 서명, 영상·ZIP 스트리밍, 이미지 분할 업로드를 포함한다. Mac 서버와 HTTPS 터널이 실행 중이어야 한다. [환경변수·실행·Git/Vercel 배포 안내](docs/vercel-local-worker.md)를 따른다.
 
 ```sh
 npm run build

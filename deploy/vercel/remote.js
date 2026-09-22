@@ -2,21 +2,16 @@
 (() => {
   window.BOCA_REMOTE = true;
   const originalFetch = window.fetch.bind(window);
-  let authenticated = false;
   let statusText = 'Mac 작업자 연결 확인 중';
   let toolbar;
   function status(message) {
     statusText = message;
     if (toolbar) toolbar.querySelector('[role=status]').textContent = message;
   }
-  function loginURL() { return '/login.html?next=' + encodeURIComponent(location.pathname + location.search + location.hash); }
   async function checked(url, init = {}) {
     const response = await originalFetch(url, init);
-    if (response.status === 401) {
-      if (!authenticated) location.replace(loginURL());
-      else { status('로그인이 만료됐습니다. 새 창에서 다시 로그인해 주세요.'); toolbar?.querySelector('a').removeAttribute('hidden'); }
-    } else if (response.status === 503) status('Mac 연결 끊김 · 서버와 터널을 확인해 주세요');
-    else if (response.ok && String(url).includes('/api/')) { authenticated = true; status('Mac 연결됨 · AI 제작은 Mac에서 실행'); }
+    if (response.status === 401 || response.status === 503) status('Mac 연결 끊김 · 서버와 터널을 확인해 주세요');
+    else if (response.ok && String(url).includes('/api/')) status('Mac 연결됨 · AI 제작은 Mac에서 실행');
     return response;
   }
   async function uploadInParts(init, data) {
@@ -56,17 +51,6 @@
     toolbar.className = 'remote-toolbar';
     toolbar.setAttribute('aria-label', '원격 연결');
     const message = document.createElement('span'); message.setAttribute('role', 'status'); message.textContent = statusText;
-    const link = document.createElement('a'); link.textContent = '다시 로그인'; link.href = loginURL(); link.target = '_blank'; link.rel = 'noopener'; link.hidden = true;
-    const logout = document.createElement('button'); logout.type = 'button'; logout.textContent = '로그아웃';
-    logout.onclick = async () => {
-      const session = await originalFetch('/api/remote/session', { cache: 'no-store' });
-      if (session.ok) {
-        const { token } = await session.json();
-        await originalFetch('/api/remote/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BOCA-Token': token }, body: '{}' });
-      }
-      sessionStorage.removeItem('boca-video-draft');
-      location.href = '/login.html';
-    };
-    toolbar.append(message, link, logout); document.body.append(toolbar);
+    toolbar.append(message); document.body.append(toolbar);
   });
 })();

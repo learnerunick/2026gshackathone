@@ -7,7 +7,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { createGateway, configuration, allowed, resolveTarget } from '../../deploy/gateway.mjs';
 
 const secret = 'test-bridge-secret-' + 'x'.repeat(32);
-let fixture, bridge, core, root, server, base, cookie, csrf;
+let fixture, bridge, core, root, server, base, csrf;
 let errors = '';
 before(async () => {
   fixture = spawn('python3', ['tests/remote/fixture_server.py'], { env: { ...process.env, BOCA_TEST_BRIDGE_SECRET: secret }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -20,22 +20,24 @@ before(async () => {
   });
   bridge = `http://127.0.0.1:${ready.bridge_port}`; core = `http://127.0.0.1:${ready.local_port}`; root = ready.root;
   const env = { BOCA_ALLOW_LOCAL_DEVELOPMENT: '1', BOCA_PUBLIC_ORIGIN: 'http://127.0.0.1:1', BOCA_BRIDGE_ORIGIN: bridge,
-    BOCA_BRIDGE_SECRET: secret, BOCA_SESSION_SECRET: 'session-secret-' + 's'.repeat(32), BOCA_DASHBOARD_PASSWORD: 'password-' + 'p'.repeat(32) };
+    BOCA_BRIDGE_SECRET: secret, BOCA_SESSION_SECRET: 'session-secret-' + 's'.repeat(32) };
   server = http.createServer(createGateway({ env })); server.listen(0, '127.0.0.1'); await once(server, 'listening');
   base = `http://127.0.0.1:${server.address().port}`; env.BOCA_PUBLIC_ORIGIN = base;
-  const login = await fetch(base + '/api/remote/login', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ password: env.BOCA_DASHBOARD_PASSWORD }) });
-  assert.equal(login.status, 200); cookie = login.headers.get('set-cookie').split(';')[0];
-  const session = await (await fetch(base + '/api/remote/session', { headers: { Cookie: cookie } })).json(); csrf = session.token;
+  const session = await fetch(base + '/api/remote/session');
+  assert.equal(session.status, 200);
+  assert.equal(session.headers.get('set-cookie'), null);
+  const data = await session.json();
+  assert.equal(data.access, 'public'); csrf = data.token;
 });
 after(async () => { server?.closeAllConnections(); if (server) await new Promise(resolve => server.close(resolve)); fixture?.kill('SIGINT'); });
 
 function api(path, method = 'GET', body, id = randomUUID(), extra = {}) {
-  return fetch(base + path, { method, headers: { Cookie: cookie, Origin: base, 'X-BOCA-Token': csrf,
+  return fetch(base + path, { method, headers: { Origin: base, 'X-BOCA-Token': csrf,
     'X-BOCA-Request-ID': id, 'Content-Type': 'application/json', ...extra }, body: method === 'POST' ? JSON.stringify(body) : undefined });
 }
 
-test('unauthenticated requests and worker/publication/import paths are rejected', async () => {
-  assert.equal((await fetch(base + '/api/state')).status, 401);
+test('dashboard opens without login while worker/publication/import paths stay blocked', async () => {
+  assert.equal((await fetch(base + '/api/state')).status, 200);
   for (const path of ['/api/worker/next', '/api/contents/import', '/api/publishing/claim', '/api/personas/abc/references']) {
     assert.equal((await api(path, 'POST', {})).status, 403);
   }
@@ -47,17 +49,17 @@ test('unauthenticated requests and worker/publication/import paths are rejected'
 test('cloud cannot opt into insecure local settings; origin and CSRF are required', async () => {
   assert.throws(() => configuration({ VERCEL: '1', BOCA_ALLOW_LOCAL_DEVELOPMENT: '1', BOCA_PUBLIC_ORIGIN: base, BOCA_BRIDGE_ORIGIN: bridge }));
   assert.throws(() => configuration({ BOCA_PUBLIC_ORIGIN: 'https://dashboard.example.com', BOCA_BRIDGE_ORIGIN: 'https://worker.example.com',
-    BOCA_BRIDGE_SECRET: 'replace-with-at-least-32-random-characters', BOCA_SESSION_SECRET: secret, BOCA_DASHBOARD_PASSWORD: secret }));
+    BOCA_BRIDGE_SECRET: 'replace-with-at-least-32-random-characters', BOCA_SESSION_SECRET: secret }));
   assert.equal((await api('/api/personas', 'POST', {}, randomUUID(), { Origin: 'https://other.example' })).status, 403);
   assert.equal((await api('/api/personas', 'POST', {}, randomUUID(), { 'X-BOCA-Token': 'bad' })).status, 403);
-  assert.equal((await fetch(base + '/api/state', { headers: { Cookie: cookie + 'tampered' } })).status, 401);
+  assert.equal((await fetch(base + '/api/state', { headers: { Cookie: 'boca_remote_session=expired-or-invalid' } })).status, 200);
 });
 
 test('Instagram recheck reaches the local verifier through authenticated routing', async () => {
   assert.equal(allowed('POST', '/api/instagram/verify'), true);
   assert.equal(allowed('GET', '/api/instagram/verify'), false);
   assert.equal((await fetch(base + '/api/instagram/verify', { method: 'POST',
-    headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+    headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
   // The isolated fixture has no Instagram credentials; this error comes from the core API.
   const response = await api('/api/instagram/verify', 'POST', {});
   assert.equal(response.status, 409);
@@ -72,6 +74,7 @@ test('actual local state survives proxying, and local mutation token is replaced
   assert.equal(state.token, csrf); assert.notEqual(state.token, original.token);
   assert.equal(JSON.stringify(state).includes(original.token), false);
   assert.equal(state.remote.mode, 'local-worker');
+  assert.equal(state.remote.access, 'public');
   assert.equal(response.headers.get('content-encoding'), 'gzip');
   assert.equal(state.jobs.find(job => job.id === 'large-history-job').status, 'completed');
   assert.equal(state.jobs.find(job => job.id === 'large-history-job').input, undefined);
@@ -144,9 +147,9 @@ test('bridge rejects expired signatures and body tampering', async () => {
   assert.equal(tampered.status, 401);
 });
 
-test('malformed login and oversized input return errors without crashing the gateway', async () => {
+test('malformed and oversized input return errors without crashing the gateway', async () => {
   for (const body of ['null', '[]', '"string"', 'bad-json']) {
-    const result = await fetch(base + '/api/remote/login', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body });
+    const result = await fetch(base + '/api/personas', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body });
     assert.equal(result.status, 400);
   }
   assert.equal((await api('/api/video/reference', 'POST', { data: 'x'.repeat(2_000_001) })).status, 400);
@@ -183,11 +186,11 @@ test('a reference above the Function request limit is assembled in small request
 test('unreachable Mac produces an explicit error and never retries a mutation', async () => {
   let calls = 0;
   const badEnv = { BOCA_ALLOW_LOCAL_DEVELOPMENT: '1', BOCA_PUBLIC_ORIGIN: base, BOCA_BRIDGE_ORIGIN: bridge,
-    BOCA_BRIDGE_SECRET: secret, BOCA_SESSION_SECRET: 'session-secret-' + 's'.repeat(32), BOCA_DASHBOARD_PASSWORD: 'password-' + 'p'.repeat(32) };
+    BOCA_BRIDGE_SECRET: secret, BOCA_SESSION_SECRET: 'session-secret-' + 's'.repeat(32) };
   const failing = http.createServer(createGateway({ env: badEnv, fetcher: async () => { calls++; throw Error('offline'); } }));
   failing.listen(0, '127.0.0.1'); await once(failing, 'listening');
   try {
-    const response = await fetch(`http://127.0.0.1:${failing.address().port}/api/runs/start`, { method: 'POST', headers: { Cookie: cookie, Origin: base, 'Content-Type': 'application/json', 'X-BOCA-Token': csrf }, body: '{}' });
+    const response = await fetch(`http://127.0.0.1:${failing.address().port}/api/runs/start`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json', 'X-BOCA-Token': csrf }, body: '{}' });
     assert.equal(response.status, 503); assert.equal((await response.json()).code, 'WORKER_UNAVAILABLE'); assert.equal(calls, 1);
   } finally { failing.closeAllConnections(); await new Promise(resolve => failing.close(resolve)); }
 });

@@ -1,11 +1,10 @@
-import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
 
 const routes = JSON.parse(readFileSync(new URL('./routes.json', import.meta.url), 'utf8'));
-const cookieName = 'boca_remote_session';
 const bodyLimit = 2_000_000;
 const signature = (key, value) => createHmac('sha256', key).update(value).digest('hex');
 const equal = (a, b) => timingSafeEqual(createHash('sha256').update(String(a)).digest(), createHash('sha256').update(String(b)).digest());
@@ -35,11 +34,11 @@ export function configuration(env = process.env) {
         (url.protocol !== 'https:' && !(local && url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) ||
         url.hostname === 'configuration-required.invalid') throw Error('Remote origin configuration is required');
   }
-  for (const key of ['BOCA_BRIDGE_SECRET', 'BOCA_SESSION_SECRET', 'BOCA_DASHBOARD_PASSWORD']) {
+  for (const key of ['BOCA_BRIDGE_SECRET', 'BOCA_SESSION_SECRET']) {
     if (!env[key] || env[key].length < 32 || env[key].startsWith('replace-with-')) throw Error('Remote secrets must be generated, with at least 32 characters');
   }
   return { origin: origin.origin, bridge: bridge.origin, local, bridgeSecret: env.BOCA_BRIDGE_SECRET,
-    sessionSecret: env.BOCA_SESSION_SECRET, password: env.BOCA_DASHBOARD_PASSWORD };
+    sessionSecret: env.BOCA_SESSION_SECRET };
 }
 
 export function allowed(method, path) {
@@ -56,20 +55,6 @@ export function resolveTarget(rawURL) {
   url.searchParams.delete('_boca_path');
   const query = url.searchParams.toString();
   return { path, target: path + (query ? '?' + query : '') };
-}
-
-export function sessionFor(req, config, now = Date.now()) {
-  const cookie = String(req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(cookieName + '='));
-  if (!cookie) return null;
-  const token = cookie.slice(cookieName.length + 1);
-  const [data, mac, extra] = token.split('.');
-  if (extra || !data || !mac || !equal(mac, signature(config.sessionSecret, data))) return null;
-  try {
-    const session = JSON.parse(Buffer.from(data, 'base64url').toString());
-    if (!Number.isInteger(session.exp) || session.exp <= now || session.exp > now + 8 * 3600_000 ||
-        typeof session.nonce !== 'string') return null;
-    return { csrf: signature(config.sessionSecret, 'csrf:' + token) };
-  } catch { return null; }
 }
 
 function json(res, status, value) {
@@ -119,20 +104,11 @@ export function createGateway({ env = process.env, fetcher = fetch } = {}) {
       }
       catch { return json(res, 400, { error: '요청 형식 또는 크기를 확인해 주세요.' }); }
     }
-    if (path === '/api/remote/login' && method === 'POST') {
-      if (!equal(JSON.parse(input).password, config.password)) return json(res, 401, { error: '접속 암호를 확인해 주세요.' });
-      const data = Buffer.from(JSON.stringify({ exp: Date.now() + 8 * 3600_000, nonce: randomBytes(24).toString('hex') })).toString('base64url');
-      res.setHeader('Set-Cookie', `${cookieName}=${data}.${signature(config.sessionSecret, data)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${config.local ? '' : '; Secure'}`);
-      return json(res, 200, { authenticated: true });
-    }
-    const session = sessionFor(req, config);
-    if (!session) return json(res, 401, { error: '대시보드 로그인이 필요합니다.', code: 'LOGIN_REQUIRED' });
-    if (method === 'POST' && !equal(req.headers['x-boca-token'] || '', session.csrf)) return json(res, 403, { error: '인증 정보를 새로고침해 주세요.' });
-    if (path === '/api/remote/session' && method === 'GET') return json(res, 200, { authenticated: true, token: session.csrf });
-    if (path === '/api/remote/logout' && method === 'POST') {
-      res.setHeader('Set-Cookie', `${cookieName}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${config.local ? '' : '; Secure'}`);
-      return json(res, 200, { authenticated: false });
-    }
+    // Public hackathon MVP: no password or browser session. Keep same-origin JSON
+    // writes, a request token, and the independent Mac bridge signature.
+    const csrf = signature(config.sessionSecret, 'public-dashboard:' + config.origin);
+    if (method === 'POST' && !equal(req.headers['x-boca-token'] || '', csrf)) return json(res, 403, { error: '화면을 새로고침한 뒤 다시 시도해 주세요.' });
+    if (path === '/api/remote/session' && method === 'GET') return json(res, 200, { access: 'public', token: csrf });
     if (!allowed(method, path)) return json(res, 403, { error: '이 경로는 원격 대시보드에서 사용할 수 없습니다.' });
     const suppliedId = req.headers['x-boca-request-id'];
     if (suppliedId && !/^[a-zA-Z0-9-]{16,80}$/.test(suppliedId)) return json(res, 400, { error: '요청 ID 형식이 잘못됐습니다.' });
@@ -152,8 +128,8 @@ export function createGateway({ env = process.env, fetcher = fetch } = {}) {
       if ([301, 302, 303, 307, 308].includes(upstream.status)) throw Error('Unexpected bridge redirect');
       if (path === '/api/state' && upstream.ok) {
         const data = await upstream.json();
-        data.token = session.csrf;
-        data.remote = { mode: 'local-worker', connected: true };
+        data.token = csrf;
+        data.remote = { mode: 'local-worker', connected: true, access: 'public' };
         // Chunked JSON and binary responses do not buffer media in a Function.
         res.statusCode = upstream.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');

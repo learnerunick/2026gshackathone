@@ -4,7 +4,7 @@ Instagram Login 토큰은 `.runtime/secrets/instagram-token`에만 저장한다.
 
 대시보드 설정에서 대상 계정을 저장한 뒤 **연결 다시 확인**을 누르면 `POST /api/instagram/verify`가 서버의 토큰으로 다음 읽기 전용 호출을 수행한다.
 
-Vercel 화면에서도 로그인 세션과 요청 인증을 거쳐 같은 Mac 서버의 검증 경로를 사용한다. 토큰은 Mac에만 보관하며 Vercel 환경변수나 Git에 복사하지 않는다.
+Vercel 화면에서도 같은 출처의 요청 토큰과 Mac 중계 인증을 거쳐 같은 Mac 서버의 검증 경로를 사용한다. 토큰은 Mac에만 보관하며 Vercel 환경변수나 Git에 복사하지 않는다.
 
 - `GET https://graph.instagram.com/v26.0/me?fields=id,user_id,username,account_type`
 - `GET https://graph.instagram.com/v26.0/{user_id}/content_publishing_limit?fields=config,quota_usage`
