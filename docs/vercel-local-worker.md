@@ -89,6 +89,16 @@ cloudflared tunnel --config .runtime/remote-bridge/tunnel.yml run boca-worker
 
 공식 설정 문서: [Cloudflare Tunnel 구성](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/configuration-file/).
 
+### 도메인 없이 시연할 때
+
+해커톤 시연에는 Quick Tunnel을 사용할 수 있다. 인증 브리지 `8787`에만 연결하며, 생성된 HTTPS 주소를 `BOCA_BRIDGE_ORIGIN`에 넣는다.
+
+```sh
+.runtime/bin/cloudflared tunnel --no-autoupdate --protocol http2 --url http://127.0.0.1:8787
+```
+
+Quick Tunnel 주소는 프로세스를 다시 시작하면 바뀔 수 있다. 새 주소를 Mac의 `.env.remote`와 Vercel Production 환경변수에 함께 반영하고 다시 배포해야 한다. 프로세스가 종료되면 원격 연결도 끊긴다. 고정 주소로 계속 운영할 때는 위의 관리형 터널 구성을 사용한다. [공식 Quick Tunnel 안내](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)는 이 방식을 개발·테스트용으로 한정한다.
+
 ## 4. Git → Vercel 연결
 
 Vercel에서 이 Git 저장소를 가져오고 다음처럼 설정한다.

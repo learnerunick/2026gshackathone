@@ -969,6 +969,7 @@ label textarea {
   flex-shrink: 0;
 }
 .activity-mini p {
+  overflow-wrap: anywhere;
   font-size: 12px;
   color: #5e6d84;
   line-height: 1.55;
@@ -2112,12 +2113,13 @@ label textarea {
   padding-top: 5px;
 }
 .studio-dialog {
+  --dialog-max-height: calc(100dvh - 60px);
   width: min(760px, calc(100vw - 40px));
   padding: 0;
   border: 1px solid #e0e5ef;
   border-radius: 17px;
   box-shadow: 0 30px 90px #17213928;
-  max-height: calc(100vh - 60px);
+  max-height: var(--dialog-max-height);
   scroll-padding-block: 120px 110px;
   overscroll-behavior: contain;
   color: var(--ink);
@@ -3133,7 +3135,7 @@ label textarea {
   }
   .studio-dialog {
     width: calc(100vw - 24px);
-    max-height: calc(100dvh - 32px);
+    --dialog-max-height: calc(100dvh - 32px);
     border-radius: 14px;
   }
   .dialog-header {
@@ -6820,7 +6822,7 @@ label textarea {
   .feed-filter select { min-height: 42px; }
 }
 @media (max-height: 500px) {
-  .studio-dialog { max-height: calc(100dvh - 16px); scroll-padding-top: 20px; }
+  .studio-dialog { --dialog-max-height: calc(100dvh - 16px); scroll-padding-top: 20px; }
   .dialog-header { position: static; }
   .dialog-footer { padding-block: 12px; }
 }
@@ -6831,4 +6833,31 @@ label textarea {
   .heading-actions > .button { white-space: normal; }
   .log-table summary,
   .video-library-more > summary { min-height: 40px; padding-block: 10px; }
+}
+
+/* Form fields scroll within the dialog; actions never cover their contents. */
+#dialog-content:has(> form) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--dialog-max-height) - 2px);
+  overflow: hidden;
+}
+#dialog-content:has(> form) > .dialog-header {
+  position: static;
+  flex-shrink: 0;
+}
+#dialog-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#dialog-content > form > .dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 16px;
+}
+#dialog-content > form > .dialog-footer {
+  position: static;
+  flex-shrink: 0;
 }
